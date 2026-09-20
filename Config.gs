@@ -146,7 +146,7 @@ const CONFIG = {
   AI_PROVIDER: 'gemini',
   AI_FALLBACK_PROVIDER: 'perplexity', // used only if the primary provider errors; set to '' to disable fallback
 
-  GEMINI_MODEL: 'gemini-2.5-flash',
+  GEMINI_MODEL: 'gemini-3.6-flash',
   PERPLEXITY_MODEL: 'sonar',
 
   // ── DAILY AUTOMATION ─────────────────────────────────────────
