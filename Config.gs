@@ -1,23 +1,238 @@
 /**
- * ============================================================
- * CONFIG.GS — THE ONLY FILE YOU SHOULD NEED TO EDIT
- * ============================================================
- * Every tunable value for the whole toolkit lives here: job filters,
- * your background (used to draft outreach messages), the outreach
- * message rules, scoring weights, and feature toggles.
- *
- * API keys are NOT stored here — they go in Script Properties
- * (Project Settings -> Script Properties in the Apps Script editor)
- * so they never end up in source control. See README for the 2-minute
- * setup. This file only reads them via the getters at the bottom.
- * ============================================================
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  CONFIG.GS — THE ONLY FILE YOU NEED TO EDIT                      ║
+ * ║                                                                  ║
+ * ║  SECTION 1 is everything a first-time user must fill in.         ║
+ * ║  Stop reading after Section 1 — Sections 2 and 3 have working    ║
+ * ║  defaults and most people never touch them.                      ║
+ * ║                                                                  ║
+ * ║  100% FREE TO RUN. No paid API is ever required.                 ║
+ * ║  You need exactly ONE free key (Gemini) to get started.         ║
+ * ╚══════════════════════════════════════════════════════════════════╝
  */
 
 const CONFIG = {
 
-  // ── SHEET STRUCTURE ────────────────────────────────────────
-  // Tab names. Change these only if you rename tabs in your own copy
-  // of the spreadsheet template.
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║                                                                  ║
+// ║   SECTION 1 · START HERE                                         ║
+// ║   Fill in these 4 blocks and you're done. Nothing else required. ║
+// ║                                                                  ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ 1.1 · ABOUT YOU                                                │
+  // │ Used to tailor resume feedback and outreach messages.          │
+  // │ Write it however you'd describe yourself to a recruiter.        │
+  // │ Works for ANY field — software, hardware, data, design,        │
+  // │ marketing, finance, nursing, teaching, anything.               │
+  // └────────────────────────────────────────────────────────────────┘
+  ME: {
+    NAME: 'Your Name',
+
+    // One line: what you are and what you're looking for.
+    HEADLINE: 'Engineer seeking full-time roles',
+
+    // Your strongest, most relevant experience. Be specific — this is
+    // what the AI uses to find gaps and to sound credible in messages.
+    // EXAMPLE (hardware): 'RISC-V CPU design verification — UVM, SystemVerilog, coverage-driven regression'
+    // EXAMPLE (software): 'Backend engineering — Go, Kubernetes, distributed systems at scale'
+    // EXAMPLE (data):     'Analytics engineering — dbt, Snowflake, Airflow, experiment design'
+    EXPERIENCE: 'Your main experience — tools, domains, and what you actually built',
+
+    // Second-strongest experience, used when a job leans a different way.
+    // Leave as an empty string '' if you only have one thing to say.
+    EXPERIENCE_ALT: '',
+
+    // Optional. Leave '' to omit from messages entirely.
+    EDUCATION: '',
+
+    // Comma-separated. The concrete tools/skills you want surfaced.
+    SKILLS: 'List, your, key, tools, and, skills',
+
+    // What you're asking people for at the end of an outreach message.
+    ASK: 'advice, guidance, or a referral for full-time roles'
+  },
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ 1.2 · WHICH JOBS TO CAPTURE                                    │
+  // │ A LinkedIn alert email's job title must contain at least one    │
+  // │ INCLUDE word to be captured, and none of the EXCLUDE words.     │
+  // │                                                                │
+  // │ ⚠️ The values below are EXAMPLES from a hardware job search.    │
+  // │    REPLACE them with words that appear in YOUR target job       │
+  // │    titles. Lowercase. Matching is case-insensitive.             │
+  // │                                                                │
+  // │ EXAMPLE (hardware):  ['verification', 'validation', 'uvm']      │
+  // │ EXAMPLE (software):  ['backend', 'software engineer', 'golang']  │
+  // │ EXAMPLE (data):      ['data engineer', 'analytics', 'ml']        │
+  // │ EXAMPLE (design):    ['product designer', 'ux', 'ui']            │
+  // │ EXAMPLE (marketing): ['marketing', 'growth', 'content']          │
+  // └────────────────────────────────────────────────────────────────┘
+  JOB_INCLUDE_KEYWORDS: ['verification', 'validation'],
+
+  // Skip titles containing any of these. Usually seniority levels you're
+  // not targeting. Set to [] to capture everything that matched above.
+  // EXAMPLE for a new grad: ['staff', 'principal', 'lead', 'manager', 'director']
+  // EXAMPLE for a senior:   ['intern', 'junior', 'entry level']
+  JOB_EXCLUDE_KEYWORDS: ['staff', 'principal', 'lead', 'intern', 'manager'],
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ 1.3 · YOUR RESUME(S)                                           │
+  // │                                                                │
+  // │ HAVE ONE RESUME? Leave this exactly as it is. Paste your resume │
+  // │ into the Settings tab and you're done.                          │
+  // │                                                                │
+  // │ HAVE SEVERAL? Add one entry per resume. For each job, the tool   │
+  // │ picks the FIRST resume whose WHEN_ROLE_CONTAINS words appear in  │
+  // │ the job title. If none match, the FIRST entry in this list is    │
+  // │ used as the default — so order matters, general-purpose first.   │
+  // │                                                                │
+  // │ The NAME must match a row label in your Settings tab, where the  │
+  // │ actual resume text lives (Settings tab: column A = name,         │
+  // │ column B = full resume text).                                    │
+  // └────────────────────────────────────────────────────────────────┘
+  RESUMES: [
+    // The default/general resume — always keep one entry with empty
+    // WHEN_ROLE_CONTAINS as the catch-all.
+    { NAME: 'General', WHEN_ROLE_CONTAINS: [] }
+
+    // ── Add more only if you actually have more resumes. Examples: ──
+    // { NAME: 'Verification', WHEN_ROLE_CONTAINS: ['verification', 'uvm', 'dv'] },
+    // { NAME: 'Validation',   WHEN_ROLE_CONTAINS: ['validation', 'silicon', 'post-silicon'] },
+    // { NAME: 'Frontend',     WHEN_ROLE_CONTAINS: ['frontend', 'react', 'ui'] },
+    // { NAME: 'Backend',      WHEN_ROLE_CONTAINS: ['backend', 'api', 'platform'] }
+  ],
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ 1.4 · WHICH FEATURES TO TURN ON                                │
+  // │ Start with the defaults below (free, no paid API).              │
+  // │ Turn extras on later once the basics work.                      │
+  // └────────────────────────────────────────────────────────────────┘
+  FEATURES: {
+
+    // Reads LinkedIn job-alert emails from Gmail into the Inbox tab.
+    // FREE · no API key at all.
+    FETCH_JOBS_FROM_GMAIL: true,
+
+    // AI scores each job against your resume and lists gaps + fixes.
+    // FREE · needs the free GEMINI_API_KEY (see Section 1.5).
+    AI_RESUME_ANALYSIS: true,
+
+    // Finds real people at the company so you can reach out.
+    // FREE TIER · needs APIFY_TOKEN (Apify gives free monthly credit).
+    // Turn this on only after the two features above are working.
+    FIND_PEOPLE_TO_CONTACT: false,
+
+    // Writes a ready-to-send outreach message for each person found.
+    // FREE · uses the same GEMINI_API_KEY as the analysis above.
+    // Set false to just get the list of people + their profile links
+    // and write your own messages.
+    DRAFT_OUTREACH_MESSAGES: true,
+
+    // Extra web research on each person (recent posts, projects) to
+    // personalize messages further.
+    // ⚠️ PAID · this is the ONLY feature that needs a paid API key
+    //    (Perplexity). Leave false unless you have one. Everything
+    //    else works perfectly without it.
+    RESEARCH_EACH_PERSON: false,
+
+    // Runs the fetch + analysis automatically twice a day.
+    DAILY_AUTOMATION: true,
+
+    // Emails you a morning summary of your pipeline.
+    // FREE · uses your own Gmail, no key.
+    MORNING_SUMMARY_EMAIL: true
+  },
+
+  // ┌────────────────────────────────────────────────────────────────┐
+  // │ 1.5 · YOUR API KEY(S) — where to get them, 2 minutes           │
+  // │                                                                │
+  // │ Keys are NOT typed into this file. They go into Script          │
+  // │ Properties so they never leak into shared code:                 │
+  // │   Apps Script editor → ⚙ Project Settings → Script Properties   │
+  // │   → "Add script property" → paste → Save script properties      │
+  // │                                                                │
+  // │ ① GEMINI_API_KEY   ← required if AI_RESUME_ANALYSIS is on       │
+  // │    FREE, no credit card.                                        │
+  // │    Get it: https://aistudio.google.com/apikey                   │
+  // │    Click "Create API key", copy the long string.                │
+  // │                                                                │
+  // │ ② APIFY_TOKEN      ← only if FIND_PEOPLE_TO_CONTACT is on       │
+  // │    FREE monthly credit, no credit card to start.                │
+  // │    Get it, exactly:                                             │
+  // │      1. Sign up at https://console.apify.com/sign-up            │
+  // │      2. Go straight to                                          │
+  // │         https://console.apify.com/settings/integrations         │
+  // │      3. Under "Personal API tokens" click the 👁 / Copy icon     │
+  // │         next to your token (it starts with  apify_api_ )        │
+  // │      4. Paste that whole string as APIFY_TOKEN                  │
+  // │    (Menu → 🤖 Assistant → 🔑 Where do I get API keys? reopens    │
+  // │     these instructions inside the sheet any time.)              │
+  // │                                                                │
+  // │ ③ PERPLEXITY_API_KEY ← PAID, and ONLY if RESEARCH_EACH_PERSON   │
+  // │    is true. Skip this entirely otherwise.                       │
+  // │    https://www.perplexity.ai/settings/api                       │
+  // └────────────────────────────────────────────────────────────────┘
+
+
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║   ✅ SETUP COMPLETE — everything below has working defaults.      ║
+// ║   Reload the sheet, then run:                                    ║
+// ║   🤖 Assistant → ⚡ First-Time Setup (checks everything for you)   ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+
+// ══════════════════════════════════════════════════════════════════
+//   SECTION 2 · COMMON TWEAKS (safe to change, all optional)
+// ══════════════════════════════════════════════════════════════════
+
+  // How far back to scan Gmail for job alerts on each run.
+  GMAIL_LOOKBACK: 'newer_than:2d',
+
+  // How many people to surface per job when FIND_PEOPLE_TO_CONTACT is on.
+  CONTACTS_PER_JOB: 5,
+
+  // Who to look for at each company.
+  // [] (empty)  = search for people holding the same job title as the posting.
+  //               This is the smart default and works for any field.
+  // Or list titles to target instead, e.g.:
+  //   ['recruiter', 'talent acquisition']        ← reach recruiters
+  //   ['hiring manager', 'engineering manager']  ← reach decision makers
+  CONTACT_TITLES: [],
+
+  // Words stripped from a job title before searching for people, so
+  // 'Senior Verification Engineer II (Remote)' becomes 'verification engineer'.
+  TITLE_NOISE_WORDS: ['senior', 'sr', 'junior', 'jr', 'staff', 'principal', 'lead',
+                      'i', 'ii', 'iii', 'iv', 'entry', 'level', 'remote', 'hybrid',
+                      'onsite', 'contract', 'intern', 'new', 'grad', 'graduate'],
+
+  // Max length of a drafted outreach message, in words.
+  MESSAGE_MAX_WORDS: 120,
+
+  // What times the daily automation runs (24h clock, your sheet's timezone).
+  AUTOMATION_MORNING_HOUR: 6,
+  AUTOMATION_EVENING_HOUR: 17,
+
+  // The dropdown choices on the Status column of the Job Tracker tab.
+  // The first value is what new rows get; APPLIED_VALUE is what the
+  // "Mark Applied" button and the Archive step look for.
+  STATUS_OPTIONS: ['Ready to Apply', 'Applied ✅', 'Interviewing', 'Offer', 'Rejected', 'Not a fit'],
+  STATUS_APPLIED_VALUE: 'Applied ✅',
+
+  // Dropdown choices for the "Reachout?" column on the Archive tab.
+  REACHOUT_OPTIONS: ['No', 'Yes', 'Done'],
+
+  // Test mode: logs everything it WOULD do without writing to the
+  // sheet or sending email. Great for a first run.
+  DRY_RUN: false,
+
+
+// ══════════════════════════════════════════════════════════════════
+//   SECTION 3 · ADVANCED (you probably never need to touch these)
+// ══════════════════════════════════════════════════════════════════
+
+  // Tab names. Only change if you renamed tabs in your copy.
   SHEETS: {
     INBOX: 'Inbox',
     JOB_TRACKER: 'Job Tracker',
@@ -27,180 +242,266 @@ const CONFIG = {
     SETTINGS: 'Settings'
   },
 
-  START_ROW: 2,          // first data row (row 1 = headers)
-  LOG_MAX_ROWS: 20,       // trims the Log tab so it never grows unbounded
+  START_ROW: 2,        // first data row (row 1 = headers)
+  LOG_MAX_ROWS: 20,     // Log tab is trimmed to this many entries
+  CONTROL_ROWS: 1000,   // how many rows get the interactive dropdowns
 
-  // ── GMAIL JOB DISCOVERY ─────────────────────────────────────
-  GMAIL: {
-    // Gmail search used to find LinkedIn job-alert emails.
-    // Keep the linkedin.com sender filter; edit the keyword list freely.
-    SENDER_FILTER: 'from:linkedin.com',
-    LOOKBACK_WINDOW: 'newer_than:2d',
-
-    // A job title line must contain at least one of these to be captured.
-    INCLUDE_KEYWORDS: ['verification', 'validation'],
-
-    // Lines containing these are treated as noise (LinkedIn's own alert
-    // boilerplate), not real job titles, and are skipped.
-    NOISE_PHRASES: [
-      'your job alert',
-      'match your preferences',
-      'new jobs match',
-      'intended for'
-    ],
-
-    // Seniority/role words to exclude from capture — edit freely to
-    // widen or narrow what counts as a relevant opening.
-    EXCLUDE_SENIORITY: ['staff', 'principal', 'lead', 'intern', 'manager']
-  },
-
-  // ── AI RESUME/JD MATCH ANALYSIS ─────────────────────────────
-  ANALYSIS: {
-    // Free-text description of the roles you're targeting, used inside
-    // the AI prompt so it knows what to weigh heavily. Rewrite this for
-    // your own field — it does not have to be hardware/silicon.
-    RECRUITER_PERSONA: 'You are an expert technical recruiter and hiring manager screen.',
-    PRIORITY_SIGNALS: [
-      'Core technical stack relevant to the target role',
-      'Domain-specific tools, platforms, or methodologies named in the JD',
-      'Adjacent/transferable skills that strengthen the match even if the JD is silent on them'
-    ],
-    // Two resume variants are supported out of the box (see the Settings
-    // tab, cells B1/B2). CATEGORY_B_KEYWORDS decides which JDs route to
-    // the second resume. Leave empty to always use the primary resume.
-    RESUME_A_LABEL: 'Primary',
-    RESUME_B_LABEL: 'Secondary',
-    CATEGORY_B_KEYWORDS: ['validation'],
-
-    // Candidate identity injected into every AI prompt. Fill this in with
-    // your own background — used for both resume-gap analysis and for
-    // drafting outreach messages below.
-    CANDIDATE_NAME: 'Your Name',
-    CANDIDATE_SIGNOFF: 'Your Name',
-    CANDIDATE_PRIMARY_EXPERIENCE: 'Primary role/skills you want emphasized (e.g. "Backend Engineering at Company X — Go, distributed systems, Kafka")',
-    CANDIDATE_SECONDARY_EXPERIENCE: 'Secondary role/skills, used as a fallback framing (e.g. "Data Engineering internship — Python, Airflow, dbt")',
-    CANDIDATE_EDUCATION: 'Degree, School, expected graduation, GPA (optional)',
-    CANDIDATE_SKILLS: 'Comma-separated list of key skills/tools to mention'
-  },
-
-  // ── LINKEDIN OUTREACH ────────────────────────────────────────
-  OUTREACH: {
-    // Column letter in the Archive tab used as the "send outreach?" flag.
-    // The pipeline only processes rows where this column = TRIGGER_VALUE
-    // AND the Status column already contains STATUS_MUST_INCLUDE.
-    TRIGGER_COLUMN_LETTER: 'L',
-    TRIGGER_VALUE: 'Yes',
-    STATUS_COLUMN_LETTER: 'I',
-    STATUS_MUST_INCLUDE: 'Applied',
-
-    TOP_N_CONTACTS: 5,          // how many people to surface per job
-    DELAY_BETWEEN_JOBS_MS: 3000, // pause between jobs in "reach out to all" mode — do not remove; avoids rate limits
-
-    MAX_MESSAGE_WORDS: 120,
-    MESSAGE_GOAL: 'ask for advice, guidance, or a referral for full-time roles',
-
-    // Maps a company name (lowercase, as it appears in your sheet) to its
-    // LinkedIn company-page slug, used to build more precise search
-    // queries. Add your own target companies; unmapped companies fall
-    // back to a best-guess slug (lowercased, spaces -> hyphens).
-    COMPANY_SLUG_MAP: {
-      // 'example company': 'example-company-slug'
-    },
-
-    // Scoring weights used when a provider returns multiple candidate
-    // profiles and the tool needs to rank/trim to TOP_N_CONTACTS.
-    // Tweak weights, but keep the underlying signals — loosening this to
-    // "just take the first N results" measurably lowers match quality.
-    SCORING_WEIGHTS: {
-      HAS_RECENT_POSTS: 3,
-      FOLLOWER_THRESHOLD: 500,
-      FOLLOWER_SCORE: 2,
-      CONNECTION_THRESHOLD: 200,
-      CONNECTION_SCORE: 1,
-      HAS_SUMMARY: 1,
-      RECENT_ACTIVITY_UNDER_30D: 4,
-      RECENT_ACTIVITY_UNDER_90D: 2,
-      RECENT_ACTIVITY_UNDER_180D: 1
-    }
-  },
-
-  // ── LIVE PROFILE SCRAPING TOGGLE ─────────────────────────────
-  // Default OFF: the tool only reads job data already in your Gmail —
-  // zero external key required, zero cost, fully functional.
-  //
-  // Turn ON to enrich/discover LinkedIn contacts via a live search
-  // provider. If you enable this, a matching API key below becomes
-  // COMPULSORY — the script hard-stops with a clear error rather than
-  // silently skipping people or failing partway through a batch.
-  ENABLE_LIVE_PROFILE_SCRAPING: false,
-
-  // Which provider to use when the toggle above is true.
-  // Supported: 'apify' | 'perplexity'
-  SCRAPING_PROVIDER: 'apify',
-
-  // ── AI PROVIDER ───────────────────────────────────────────────
-  // Which provider drafts resume analysis + outreach messages.
-  // Supported: 'gemini' | 'perplexity'
-  // Gemini has a free tier; Perplexity requires a funded API key but
-  // can also power live people-search (see SCRAPING_PROVIDER above).
+  // Which AI writes the analysis and messages.
+  // 'gemini' is free. 'perplexity' is paid — only switch if you have a key.
   AI_PROVIDER: 'gemini',
-  AI_FALLBACK_PROVIDER: 'perplexity', // used only if the primary provider errors; set to '' to disable fallback
 
+  // If the main provider errors, try this one. Empty '' = no fallback,
+  // which keeps the toolkit 100% free and means no paid key is ever
+  // required. Only set this to 'perplexity' if you have a paid key.
+  AI_FALLBACK_PROVIDER: '',
+
+  // Model IDs. Update if a provider retires a model.
   GEMINI_MODEL: 'gemini-3.6-flash',
   PERPLEXITY_MODEL: 'sonar',
 
-  // ── DAILY AUTOMATION ─────────────────────────────────────────
-  TRIGGERS: {
-    MORNING_HOUR: 6,
-    EVENING_HOUR: 17,
-    SEND_MORNING_EMAIL: true
+  // Which service finds people. 'apify' has a free tier.
+  // 'perplexity' is paid and only worth it if you already have a key.
+  PEOPLE_SEARCH_PROVIDER: 'apify',
+
+  // Gmail sender filter for LinkedIn alerts. Don't loosen this or you'll
+  // start parsing unrelated mail.
+  GMAIL_SENDER: 'from:linkedin.com',
+
+  // LinkedIn's own alert boilerplate — these lines are never job titles.
+  GMAIL_NOISE_PHRASES: [
+    'your job alert',
+    'match your preferences',
+    'new jobs match',
+    'intended for'
+  ],
+
+  // Pauses between API calls, in milliseconds. Do not remove these —
+  // they prevent rate-limiting and provider bans.
+  DELAY_BETWEEN_AI_CALLS_MS: 3500,
+  DELAY_BETWEEN_JOBS_MS: 3000,
+
+  // Optional: map a company name (as it appears in your sheet, lowercase)
+  // to its LinkedIn company-page slug for more precise people search.
+  // Unmapped companies fall back to lowercase-with-hyphens.
+  COMPANY_SLUG_MAP: {
+    // 'advanced micro devices': 'advanced-micro-devices'
   },
 
-  // Set true to log every action without writing/sending anything —
-  // useful for a first run so you can confirm setup before it touches
-  // your sheet or sends email.
-  DRY_RUN: false
+  // How candidate profiles are ranked when a search returns more people
+  // than CONTACTS_PER_JOB. Tune the numbers if you like, but keeping the
+  // signal-based approach matters — taking the first N results instead
+  // measurably lowers contact quality.
+  SCORING_WEIGHTS: {
+    HAS_RECENT_POSTS: 3,
+    FOLLOWER_THRESHOLD: 500,
+    FOLLOWER_SCORE: 2,
+    CONNECTION_THRESHOLD: 200,
+    CONNECTION_SCORE: 1,
+    HAS_SUMMARY: 1,
+    RECENT_ACTIVITY_UNDER_30D: 4,
+    RECENT_ACTIVITY_UNDER_90D: 2,
+    RECENT_ACTIVITY_UNDER_180D: 1
+  },
+
+  // Column numbers on the Job Tracker / Archive tabs. Only change these
+  // if you reorder columns in your own copy of the sheet.
+  COLUMNS: {
+    COMPANY: 1,
+    ROLE: 2,
+    URL: 3,
+    TARGET_RESUME: 4,
+    MATCH_SCORE: 5,
+    MATCHER: 6,
+    GAPS: 7,
+    TWEAKS: 8,
+    STATUS: 9,
+    FILENAME: 10,
+    APPLIED_DATE: 11,
+    REACHOUT: 12       // Archive tab only
+  }
 };
 
-// ============================================================
-// API KEYS — read from Script Properties, never hardcoded here.
-// Set them via: Apps Script editor -> Project Settings -> Script Properties.
-// ============================================================
+
+// ══════════════════════════════════════════════════════════════════
+//   API KEY READERS — keys live in Script Properties, never in code.
+// ══════════════════════════════════════════════════════════════════
 function getGeminiKey()     { return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY'); }
 function getPerplexityKey() { return PropertiesService.getScriptProperties().getProperty('PERPLEXITY_API_KEY'); }
 function getApifyToken()    { return PropertiesService.getScriptProperties().getProperty('APIFY_TOKEN'); }
 
-/**
- * Validates the config before any pipeline runs. Called at the start of
- * every entry point so a bad setup fails fast with one clear message
- * instead of partway through a batch or as a silent no-op.
- */
-function validateConfig() {
-  const errors = [];
 
-  if (CONFIG.AI_PROVIDER === 'gemini' && !getGeminiKey()) {
-    errors.push('AI_PROVIDER is "gemini" but GEMINI_API_KEY is not set in Script Properties.');
+// ══════════════════════════════════════════════════════════════════
+//   SETUP CHECKER — plain-English report of what's ready and what
+//   still needs attention. Never throws; safe to run any time.
+// ══════════════════════════════════════════════════════════════════
+function checkSetup() {
+  const F        = CONFIG.FEATURES;
+  const ready    = [];
+  const problems = [];
+  const notes    = [];
+
+  // --- Keys required by the features that are switched on ---
+  const needsGemini = F.AI_RESUME_ANALYSIS ||
+                      (F.FIND_PEOPLE_TO_CONTACT && F.DRAFT_OUTREACH_MESSAGES) ||
+                      CONFIG.AI_PROVIDER === 'gemini';
+
+  if (needsGemini && CONFIG.AI_PROVIDER === 'gemini') {
+    if (getGeminiKey()) ready.push('GEMINI_API_KEY is set (free tier)');
+    else problems.push('GEMINI_API_KEY is missing. Get a free key at https://aistudio.google.com/apikey then add it in Project Settings → Script Properties.');
   }
+
+  if (F.FIND_PEOPLE_TO_CONTACT) {
+    if (CONFIG.PEOPLE_SEARCH_PROVIDER === 'apify') {
+      if (getApifyToken()) ready.push('APIFY_TOKEN is set (free tier)');
+      else problems.push('FIND_PEOPLE_TO_CONTACT is on but APIFY_TOKEN is missing. Copy your token from https://console.apify.com/settings/integrations (starts with apify_api_) into Script Properties.');
+    }
+    if (CONFIG.PEOPLE_SEARCH_PROVIDER === 'perplexity' && !getPerplexityKey()) {
+      problems.push('PEOPLE_SEARCH_PROVIDER is "perplexity" (paid) but PERPLEXITY_API_KEY is missing. Switch PEOPLE_SEARCH_PROVIDER to "apify" for the free option, or add the key.');
+    }
+  }
+
+  if (F.RESEARCH_EACH_PERSON) {
+    if (getPerplexityKey()) ready.push('PERPLEXITY_API_KEY is set (paid, person research)');
+    else problems.push('RESEARCH_EACH_PERSON is on but PERPLEXITY_API_KEY is missing. This is the only paid feature — set RESEARCH_EACH_PERSON to false to skip it entirely.');
+  }
+
   if (CONFIG.AI_PROVIDER === 'perplexity' && !getPerplexityKey()) {
-    errors.push('AI_PROVIDER is "perplexity" but PERPLEXITY_API_KEY is not set in Script Properties.');
-  }
-  if (CONFIG.AI_FALLBACK_PROVIDER === 'gemini' && !getGeminiKey()) {
-    errors.push('AI_FALLBACK_PROVIDER is "gemini" but GEMINI_API_KEY is not set.');
+    problems.push('AI_PROVIDER is "perplexity" (paid) but PERPLEXITY_API_KEY is missing. Set AI_PROVIDER back to "gemini" for the free option.');
   }
   if (CONFIG.AI_FALLBACK_PROVIDER === 'perplexity' && !getPerplexityKey()) {
-    errors.push('AI_FALLBACK_PROVIDER is "perplexity" but PERPLEXITY_API_KEY is not set.');
+    problems.push('AI_FALLBACK_PROVIDER is "perplexity" (paid) but no key is set. Set AI_FALLBACK_PROVIDER to \'\' to stay fully free.');
   }
 
-  if (CONFIG.ENABLE_LIVE_PROFILE_SCRAPING) {
-    if (CONFIG.SCRAPING_PROVIDER === 'apify' && !getApifyToken()) {
-      errors.push('ENABLE_LIVE_PROFILE_SCRAPING is true and SCRAPING_PROVIDER is "apify", but APIFY_TOKEN is not set. Either add the token or set ENABLE_LIVE_PROFILE_SCRAPING to false.');
-    }
-    if (CONFIG.SCRAPING_PROVIDER === 'perplexity' && !getPerplexityKey()) {
-      errors.push('ENABLE_LIVE_PROFILE_SCRAPING is true and SCRAPING_PROVIDER is "perplexity", but PERPLEXITY_API_KEY is not set. Either add the key or set ENABLE_LIVE_PROFILE_SCRAPING to false.');
+  // --- Personal details filled in? ---
+  if (CONFIG.ME.NAME === 'Your Name' || !CONFIG.ME.NAME) {
+    problems.push('CONFIG.ME.NAME is still the placeholder "Your Name" — edit Section 1.1 of Config.gs.');
+  } else {
+    ready.push('Your details are filled in (' + CONFIG.ME.NAME + ')');
+  }
+  if (!CONFIG.ME.EXPERIENCE || CONFIG.ME.EXPERIENCE.indexOf('Your main experience') === 0) {
+    problems.push('CONFIG.ME.EXPERIENCE is still placeholder text — describe your actual experience in Section 1.1.');
+  }
+
+  // --- Job keywords ---
+  if (!CONFIG.JOB_INCLUDE_KEYWORDS || CONFIG.JOB_INCLUDE_KEYWORDS.length === 0) {
+    problems.push('JOB_INCLUDE_KEYWORDS is empty — add at least one word that appears in your target job titles (Section 1.2).');
+  } else {
+    ready.push('Job keywords: ' + CONFIG.JOB_INCLUDE_KEYWORDS.join(', '));
+    if (CONFIG.JOB_INCLUDE_KEYWORDS.join(',') === 'verification,validation') {
+      notes.push('JOB_INCLUDE_KEYWORDS is still the hardware EXAMPLE (verification, validation). Replace it with words from YOUR target job titles unless you are genuinely job-hunting in hardware DV.');
     }
   }
 
-  if (errors.length > 0) {
-    throw new Error('Config error(s):\n- ' + errors.join('\n- '));
+  // --- Tabs present? ---
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  Object.keys(CONFIG.SHEETS).forEach(k => {
+    if (!ss.getSheetByName(CONFIG.SHEETS[k])) {
+      problems.push('Missing tab "' + CONFIG.SHEETS[k] + '". Run 🤖 Assistant → ⚡ First-Time Setup to create it.');
+    }
+  });
+
+  // --- Resumes present in the Settings tab? ---
+  const settings = ss.getSheetByName(CONFIG.SHEETS.SETTINGS);
+  if (settings) {
+    const resumeMap = getResumeMap();
+    const names     = Object.keys(resumeMap);
+    if (names.length === 0) {
+      problems.push('No resume text found. On the Settings tab put a label in column A (e.g. "General") and paste your full resume into column B of the same row.');
+    } else {
+      ready.push('Resume(s) found in Settings tab: ' + names.join(', '));
+    }
+    CONFIG.RESUMES.forEach(r => {
+      if (!resumeMap[r.NAME]) {
+        problems.push('Config lists a resume named "' + r.NAME + '" but no row in the Settings tab has that label in column A.');
+      }
+    });
   }
+
+  return { ready: ready, problems: problems, notes: notes };
+}
+
+/**
+ * Called at the start of each pipeline. Throws only when the specific
+ * thing about to run is genuinely unusable, with a plain-English fix.
+ */
+function requireReady(feature) {
+  if (feature === 'ai' && CONFIG.AI_PROVIDER === 'gemini' && !getGeminiKey()) {
+    throw new Error('No Gemini API key yet.\n\nGet a FREE key at https://aistudio.google.com/apikey\nThen: Project Settings → Script Properties → add GEMINI_API_KEY.\n\nRun 🤖 Assistant → ✅ Check My Setup for a full checklist.');
+  }
+  if (feature === 'ai' && CONFIG.AI_PROVIDER === 'perplexity' && !getPerplexityKey()) {
+    throw new Error('AI_PROVIDER is set to "perplexity" but no PERPLEXITY_API_KEY is set.\nSet AI_PROVIDER back to \'gemini\' in Config.gs to use the free option.');
+  }
+  if (feature === 'people') {
+    if (!CONFIG.FEATURES.FIND_PEOPLE_TO_CONTACT) {
+      throw new Error('Finding contacts is turned off.\n\nIn Config.gs set FEATURES.FIND_PEOPLE_TO_CONTACT to true, and add an APIFY_TOKEN (free) from https://console.apify.com/settings/integrations');
+    }
+    if (CONFIG.PEOPLE_SEARCH_PROVIDER === 'apify' && !getApifyToken()) {
+      throw new Error('No Apify token yet — needed to find people.\n\n1. Sign up free: https://console.apify.com/sign-up\n2. Open https://console.apify.com/settings/integrations\n3. Copy your Personal API token (starts with apify_api_)\n4. Project Settings → Script Properties → add APIFY_TOKEN');
+    }
+    if (CONFIG.PEOPLE_SEARCH_PROVIDER === 'perplexity' && !getPerplexityKey()) {
+      throw new Error('PEOPLE_SEARCH_PROVIDER is "perplexity" (paid) but no key is set.\nSet it to "apify" in Config.gs to use the free option.');
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//   RESUME HELPERS
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Reads every resume from the Settings tab.
+ * Settings layout: column A = label, column B = full resume text.
+ * Returns { label: text, ... } — add as many rows as you have resumes.
+ */
+function getResumeMap() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEETS.SETTINGS);
+  const map   = {};
+  if (!sheet || sheet.getLastRow() < 1) return map;
+
+  const rows = sheet.getRange(1, 1, sheet.getLastRow(), 2).getValues();
+  rows.forEach(r => {
+    const label = (r[0] || '').toString().trim();
+    const text  = (r[1] || '').toString().trim();
+    // Skip header rows and empty/placeholder rows
+    if (!label || !text) return;
+    if (label.toLowerCase() === 'resume name' || label.toLowerCase() === 'label') return;
+    if (text.toLowerCase().indexOf('paste your') === 0) return;
+    map[label] = text;
+  });
+  return map;
+}
+
+/**
+ * Picks which resume to use for a given job title.
+ * First match on WHEN_ROLE_CONTAINS wins; otherwise the first entry in
+ * CONFIG.RESUMES is the default. Returns { name, text }.
+ */
+function pickResumeFor(roleTitle) {
+  const map   = getResumeMap();
+  const role  = (roleTitle || '').toString().toLowerCase();
+  const names = Object.keys(map);
+
+  for (let i = 0; i < CONFIG.RESUMES.length; i++) {
+    const r  = CONFIG.RESUMES[i];
+    const kw = r.WHEN_ROLE_CONTAINS || [];
+    if (kw.length > 0 && kw.some(k => role.indexOf(k.toLowerCase()) !== -1) && map[r.NAME]) {
+      return { name: r.NAME, text: map[r.NAME] };
+    }
+  }
+
+  // Default: first configured resume that actually has text, else first row present.
+  for (let i = 0; i < CONFIG.RESUMES.length; i++) {
+    const n = CONFIG.RESUMES[i].NAME;
+    if (map[n]) return { name: n, text: map[n] };
+  }
+  if (names.length > 0) return { name: names[0], text: map[names[0]] };
+  return { name: '', text: '' };
+}
+
+// Converts a column letter like 'L' to its number (12).
+function columnLetterToIndex(letter) {
+  let col = 0;
+  const s = letter.toString().toUpperCase();
+  for (let i = 0; i < s.length; i++) col = col * 26 + (s.charCodeAt(i) - 64);
+  return col;
 }
