@@ -1,0 +1,11 @@
+# Apps Script / clasp local config (contains your script ID — never share)
+.clasp.json
+.clasprc.json
+
+# OS/editor cruft
+.DS_Store
+*.swp
+
+# Never commit real API keys or secrets
+*.env
+secrets.json

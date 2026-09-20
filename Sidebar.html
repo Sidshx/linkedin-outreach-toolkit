@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f6; color: #202124; padding: 25px; margin: 0; }
+      
+      /* Header & Navigation */
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 15px; margin-bottom: 25px; }
+      .header-actions { display: flex; gap: 10px; }
+      h2 { margin: 0; font-size: 24px; color: #1a73e8; }
+      h3 { margin: 5px 0 0 0; font-size: 15px; color: #5f6368; font-weight: normal; }
+
+      /* Section Styling */
+      .section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; border-left: 6px solid #1a73e8; }
+      .section.gaps { border-left-color: #d93025; }
+      .section.tweaks { border-left-color: #f9ab00; }
+      .section.filename-sec { border-left-color: #34a853; background-color: #f6fbf7; }
+      
+      .section-title { font-size: 13px; text-transform: uppercase; font-weight: bold; margin-bottom: 15px; letter-spacing: 0.8px; color: #3c4043; }
+      
+      /* Lists & Content */
+      ul { margin: 0; padding-left: 0; list-style-type: none; }
+      li { font-size: 14px; line-height: 1.6; color: #3c4043; padding: 12px 0; border-bottom: 1px solid #f1f3f4; }
+      li:last-child { border-bottom: none; }
+      
+      /* Surgical Editing & Copy Boxes */
+      .copy-container { margin-top: 10px; padding: 12px; background-color: #ffffff; border: 1px solid #dadce0; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+      .code-text { font-family: 'Roboto Mono', monospace; font-size: 13px; color: #c5221f; word-break: break-all; line-height: 1.4; }
+      .filename-text { color: #137333; font-weight: 600; }
+
+      /* Buttons */
+      .btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; border: none; }
+      .copy-btn { background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; }
+      .copy-btn:hover { background: #e8eaed; border-color: #1a73e8; color: #1a73e8; }
+      .copy-btn.copied { background: #e6f4ea; color: #137333; border-color: #137333; }
+      
+      .applied-btn { background: #34a853; color: white; box-shadow: 0 2px 4px rgba(52,168,83,0.3); }
+      .applied-btn:hover { background: #2d9249; }
+      .applied-btn:disabled { background: #bdc1c6; cursor: not-allowed; box-shadow: none; }
+      
+      .refresh-btn { background: #1a73e8; color: white; }
+    </style>
+  </head>
+  <body>
+
+    <div class="header">
+      <div id="job-titles"><h2>Initializing...</h2></div>
+      <div class="header-actions">
+        <button id="applied-btn" class="btn applied-btn" onclick="markApplied()">Mark Applied</button>
+        <button class="btn refresh-btn" onclick="loadData()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div id="content">
+      <div style="text-align:center; padding: 50px; color: #5f6368; font-size: 16px;">
+        Select a row in the sheet and click Refresh to begin analysis.
+      </div>
+    </div>
+
+    <script>
+      // Global clipboard helper
+      function copyToClipboard(button, textToCopy) {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          const originalText = button.innerText;
+          button.innerText = 'Copied! ✓';
+          button.classList.add('copied');
+          setTimeout(() => {
+            button.innerText = originalText;
+            button.classList.remove('copied');
+          }, 2000);
+        } catch (err) {
+          console.error('Fallback copy failed', err);
+        }
+        document.body.removeChild(textArea);
+      }
+
+      function loadData() {
+        document.getElementById('content').innerHTML = '<div style="text-align:center; padding: 50px;">Analyzing resume match...</div>';
+        google.script.run
+          .withSuccessHandler(displayData)
+          .withFailureHandler(err => {
+             document.getElementById('content').innerHTML = `<div style="color:#d93025; padding:20px;">Error: ${err.message}</div>`;
+          })
+          .getActiveRowData();
+      }
+
+      function markApplied() {
+        const btn = document.getElementById('applied-btn');
+        btn.innerText = "Updating...";
+        btn.disabled = true;
+        
+        google.script.run
+          .withSuccessHandler(() => {
+            btn.innerText = "Applied ✅";
+            btn.style.background = "#808080";
+          })
+          .markAsAppliedInSheet();
+      }
+
+      function displayData(data) {
+        if (data.error) {
+          document.getElementById('content').innerHTML = `<div style="text-align:center; padding: 40px; color: #d93025; font-weight: bold;">${data.error}</div>`;
+          return;
+        }
+
+        document.getElementById('job-titles').innerHTML = `
+  <h2>${data.company}</h2>
+  <h3>${data.role} — Match: ${data.score}</h3>
+  <div style="margin-top: 8px;">
+    <a href="${data.url}" target="_blank" style="color: #1a73e8; font-size: 13px; text-decoration: none; font-weight: 500;">
+      🔗 View Job on LinkedIn
+    </a>
+  </div>
+`;
+        
+        // Reset Applied Button if row changed
+        const appBtn = document.getElementById('applied-btn');
+        appBtn.innerText = "Mark Applied";
+        appBtn.disabled = false;
+        appBtn.style.background = "#34a853";
+
+        // Logic to extract replacement text specifically after "with" in quotes
+        const formatSurgicalList = (text) => {
+          if (!text) return '<li>No actions identified.</li>';
+          const items = text.split('•').filter(i => i.trim() !== '');
+          
+          return items.map(i => {
+            const raw = i.trim();
+            const quotes = raw.match(/'([^']+)'/g);
+            let label = raw;
+            let toCopy = raw;
+
+            if (quotes && quotes.length >= 2) {
+                // The replacement text is inside the second set of quotes
+                toCopy = quotes[1].replace(/'/g, ""); 
+                label = raw.split(/with/i)[0] + "with:";
+            }
+
+            const safeCopy = toCopy.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            return `<li>
+              <div style="font-weight: 500; margin-bottom: 4px;">${label}</div>
+              <div class="copy-container">
+                <span class="code-text">${toCopy}</span>
+                <button class="btn copy-btn" onclick="copyToClipboard(this, '${safeCopy}')">Copy Text</button>
+              </div>
+            </li>`;
+          }).join('');
+        };
+
+        const formatStandardList = (text) => {
+          if (!text) return '<li>No items identified.</li>';
+          return text.split('•').filter(i => i.trim() !== '').map(i => `<li>${i.trim()}</li>`).join('');
+        };
+
+        document.getElementById('content').innerHTML = `
+          <div class="section filename-sec">
+            <div class="section-title" style="color: #137333;">Standardized Filename</div>
+            <div class="copy-container" style="border-color: #a8dab5;">
+              <span class="code-text filename-text">${data.filename || 'N/A'}</span>
+              <button class="btn copy-btn" style="background: white;" onclick="copyToClipboard(this, '${data.filename}')">Copy Filename</button>
+            </div>
+          </div>
+
+          <div class="section tweaks">
+            <div class="section-title" style="color: #ea8600;">Surgical Resume Tweaks (Action Only)</div>
+            <ul>${formatSurgicalList(data.tweaks)}</ul>
+          </div>
+
+          <div class="section">
+            <div class="section-title" style="color: #1a73e8;">Architecture Matcher Actions</div>
+            <ul>${formatStandardList(data.arch)}</ul>
+          </div>
+
+          <div class="section gaps">
+            <div class="section-title" style="color: #d93025;">Gap Analysis (Missing Requirements)</div>
+            <ul>${formatStandardList(data.gaps)}</ul>
+          </div>
+        `;
+      }
+
+      // Auto-load on open
+      loadData();
+    </script>
+  </body>
+</html>
