@@ -268,12 +268,51 @@ const CONFIG = {
   GMAIL_SENDER: 'from:linkedin.com',
 
   // LinkedIn's own alert boilerplate — these lines are never job titles.
-  GMAIL_NOISE_PHRASES: [
-    'your job alert',
-    'match your preferences',
-    'new jobs match',
-    'intended for'
+  // Written as regular expressions (case-insensitive) because LinkedIn
+  // rewords its headings often. The critical one is 'jobs in <place>',
+  // which is the alert's own headline, e.g.
+  //   "Software Security Engineer jobs in Huntsville"
+  // That line looks exactly like a job title but is NOT one — matching it
+  // shifts every column by one and puts the heading in the Role field.
+  GMAIL_NOISE_PATTERNS: [
+    'jobs? in ',                 // alert headline — most important rule
+    'job alert',
+    '\\d+\\+? new jobs?',
+    'new jobs? match',
+    'jobs? for you',
+    'match(es)? your',
+    'based on your profile',
+    'recommended for you',
+    'similar jobs?',
+    'see all( jobs?)?',
+    'view job',
+    'apply now',
+    'easy apply',
+    'actively recruiting',
+    'people clicked apply',
+    'promoted by',
+    'responses managed',
+    'be an early applicant',
+    'your preferences',
+    'intended for',
+    'unsubscribe',
+    'you.re receiving',
+    'this email was sent',
+    'help ?center',
+    '^linkedin$',
+    '^\\d+$'
   ],
+
+  // A line matching any of these is a location, not a company name.
+  GMAIL_LOCATION_PATTERNS: [
+    '^[A-Za-z .\'\\-]+,\\s*[A-Z]{2}\\b',      // Huntsville, AL
+    '^[A-Za-z .\'\\-]+,\\s*[A-Za-z ]+$',      // Austin, Texas
+    '\\((on-?site|remote|hybrid)\\)',
+    '^(remote|on-?site|hybrid|united states|india|canada)$'
+  ],
+
+  // Longest a line can be and still plausibly be a job title.
+  MAX_JOB_TITLE_LENGTH: 100,
 
   // Pauses between API calls, in milliseconds. Do not remove these —
   // they prevent rate-limiting and provider bans.

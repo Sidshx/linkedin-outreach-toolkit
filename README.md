@@ -165,6 +165,7 @@ Scales to as many resumes as you want — add a config entry and a sheet row per
 | 📧 Fetch LinkedIn Jobs | Pulls new jobs from Gmail |
 | ▶️ / ⏭️ Run AI | Analyze one row or all pending rows |
 | 🔗 Find People + Draft | Contact discovery and message drafting |
+| 🧹 Clean Up Imported Rows | Strips stray HTML and deletes rows that aren't real jobs |
 | 🔄 Refresh Dropdown Columns | Re-applies dropdowns after config changes |
 | ⏰ Set Up Daily Automation | Schedules the twice-daily run |
 
@@ -180,6 +181,8 @@ Scales to as many resumes as you want — add a config entry and a sheet row per
 | Key added but still failing | You're likely in the wrong Apps Script project, or you didn't click Save. Re-check, then run **✅ Check My Setup**. |
 | `model ... is no longer available` | Google retired the model. Update `GEMINI_MODEL` in Section 3 — current list at <https://ai.google.dev/gemini-api/docs/models> |
 | No jobs found | Your `JOB_INCLUDE_KEYWORDS` don't match your alert titles, or the script is authorized under the wrong Google account. |
+| Company and Role columns swapped | Fixed in the current version. Run **🧹 Clean Up Imported Rows**, then re-fetch. |
+| Raw HTML like `<strong class=...>` in a cell | Same fix — run **🧹 Clean Up Imported Rows**. |
 | Wrong Google account authorized | Copy the sheet into the correct account, re-paste the Script Properties, re-run ⚡ First-Time Setup. |
 | No contacts found | Check the company spelling; try `CONTACT_TITLES: ['recruiter']`; run `debugFullPipeline()` from the editor. |
 | Apify HTTP 401/403 | Re-copy the full token from the integrations page — it must start with `apify_api_`. |
@@ -196,6 +199,7 @@ These look like things to tidy up but shouldn't be:
 - **Triple deduplication** across Inbox, Job Tracker, and Archive — a job you already archived won't reappear weeks later.
 - **Signal-based contact ranking** rather than taking the first N search results — measurably better contact quality.
 - **Log trimmed to 20 rows** — keeps the sheet responsive.
+- **Alert-heading rejection in the email parser** — LinkedIn's own headline ("Software Security Engineer jobs in Huntsville") looks exactly like a job title. Matching it shifts every column by one. The `jobs? in ` pattern in `GMAIL_NOISE_PATTERNS` is load-bearing.
 - **Model name as a single config value** — when a provider retires a model, it's a one-line fix.
 
 ---

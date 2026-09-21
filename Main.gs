@@ -28,6 +28,7 @@ function onOpen() {
     .addItem('🔗 Find People + Draft (Selected)',  'reachoutSingleJob')
     .addItem('🔗 Find People + Draft (All Yes)',   'reachoutAllJobs')
     .addSeparator()
+    .addItem('🧹 Clean Up Imported Rows',          'cleanUpImportedRows')
     .addItem('🔄 Refresh Dropdown Columns',        'installSheetControls')
     .addItem('⏰ Set Up Daily Automation',         'setupTriggers')
     .addToUi();
@@ -595,19 +596,27 @@ function fetchLinkedInJobs() {
   const threads = GmailApp.search(query);
   let newJobsCount = 0;
 
+  let skippedHeadings = 0;
+
   threads.forEach(thread => {
     thread.getMessages().forEach(message => {
-      const lines = message.getPlainBody().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const lines = getCleanEmailLines(message);
+
       for (let i = 0; i < lines.length; i++) {
         const line      = lines[i];
         const lowerLine = line.toLowerCase();
 
         if (!CONFIG.JOB_INCLUDE_KEYWORDS.some(k => lowerLine.indexOf(k.toLowerCase()) !== -1)) continue;
-        if (CONFIG.GMAIL_NOISE_PHRASES.some(p => lowerLine.indexOf(p.toLowerCase()) !== -1)) continue;
+
+        // Reject LinkedIn's own alert headline before anything else.
+        // Without this, "Software Security Engineer jobs in Huntsville"
+        // gets treated as a job title and every field shifts by one.
+        if (isAlertNoise(line)) { skippedHeadings++; continue; }
+        if (!looksLikeJobTitle(line))  continue;
         if (CONFIG.JOB_EXCLUDE_KEYWORDS.some(s => lowerLine.indexOf(s.toLowerCase()) !== -1)) continue;
 
         const title   = line;
-        const company = (i + 1 < lines.length) ? lines[i + 1] : 'Unknown';
+        const company = findCompanyNear(lines, i);
         let jobUrl    = '';
 
         for (let k = i; k < Math.min(i + 15, lines.length); k++) {
@@ -620,7 +629,7 @@ function fetchLinkedInJobs() {
         if (jobUrl && existingUrls.indexOf(jobUrl) === -1) {
           const category = CONFIG.JOB_INCLUDE_KEYWORDS.find(k => lowerLine.indexOf(k.toLowerCase()) !== -1) || 'General';
           if (CONFIG.DRY_RUN) {
-            Logger.log('[DRY RUN] Would add: ' + company + ' — ' + title + ' (' + jobUrl + ')');
+            Logger.log('[DRY RUN] Would add: company="' + company + '" role="' + title + '" (' + jobUrl + ')');
           } else {
             inboxSheet.appendRow([company, title, jobUrl, '', category, 'Need JD']);
           }
@@ -632,7 +641,147 @@ function fetchLinkedInJobs() {
     });
   });
 
+  if (skippedHeadings > 0) Logger.log('Ignored ' + skippedHeadings + ' alert-heading line(s) that are not real jobs.');
+
   writeToLog('LinkedIn Fetch', 'Scanned ' + CONFIG.GMAIL_LOOKBACK + '. Found ' + newJobsCount + ' new jobs.', 'Success');
+}
+
+// ============================================================
+// EMAIL PARSING HELPERS
+//
+// LinkedIn's alert emails are messy: the "plain text" part often still
+// contains HTML fragments, and the alert's own headline looks just like
+// a job title. These helpers keep Company and Role in the right columns.
+// ============================================================
+
+/** Splits a message into clean, tag-free, non-empty lines. */
+function getCleanEmailLines(message) {
+  let body = message.getPlainBody() || '';
+
+  // Some LinkedIn alerts have an effectively empty plain-text part.
+  if (body.replace(/\s/g, '').length < 40) {
+    body = (message.getBody() || '')
+      .replace(/<\/(p|div|tr|td|h[1-6]|li|br)>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n');
+  }
+
+  return body.split('\n').map(cleanEmailLine).filter(l => l.length > 0);
+}
+
+/** Strips HTML tags, decodes entities, and trims bullet/pipe decoration. */
+function cleanEmailLine(line) {
+  if (!line) return '';
+  let s = line.toString();
+  s = s.replace(/<[^>]*>/g, ' ');            // remove <strong class=...> etc.
+  s = decodeHtmlEntities(s);                  // &amp; → &, collapse whitespace
+  s = s.replace(/^[\s\u2022\-\u2013\u2014*|>]+/, '');  // leading bullets/quotes
+  s = s.replace(/[\s\u2022\-\u2013\u2014*|]+$/, '');   // trailing decoration
+  return s.trim();
+}
+
+/** True if the line is LinkedIn boilerplate rather than a job title. */
+function isAlertNoise(line) {
+  const s = (line || '').toString();
+  return CONFIG.GMAIL_NOISE_PATTERNS.some(p => new RegExp(p, 'i').test(s));
+}
+
+/** True if the line is a location rather than a company name. */
+function isLocationLine(line) {
+  const s = (line || '').toString();
+  return CONFIG.GMAIL_LOCATION_PATTERNS.some(p => new RegExp(p, 'i').test(s));
+}
+
+/** Basic sanity checks for something claiming to be a job title. */
+function looksLikeJobTitle(line) {
+  const s = (line || '').toString();
+  if (s.length < 3 || s.length > CONFIG.MAX_JOB_TITLE_LENGTH) return false;
+  if (/https?:\/\//i.test(s))  return false;   // it's a link, not a title
+  if (/[<>]/.test(s))          return false;   // leftover markup
+  if (isLocationLine(s))       return false;
+  return true;
+}
+
+/**
+ * Finds the company name for the job title at lines[titleIndex].
+ * LinkedIn lists the company on the line right after the title, but
+ * sometimes inserts blank/boilerplate lines, so this scans the next few
+ * lines and skips anything that is noise, a location, or a URL.
+ */
+function findCompanyNear(lines, titleIndex) {
+  for (let k = titleIndex + 1; k < Math.min(titleIndex + 5, lines.length); k++) {
+    let candidate = lines[k];
+    if (!candidate) continue;
+    if (candidate.indexOf('jobs/view/') !== -1)  continue;
+    if (/https?:\/\//i.test(candidate))          continue;
+    if (isAlertNoise(candidate))                 continue;
+    if (isLocationLine(candidate))               continue;
+    if (candidate.length > 80)                   continue;   // prose, not a name
+
+    // "COLSA · Huntsville, AL" → "COLSA"
+    candidate = candidate.split('\u00b7')[0].split('  ')[0].trim();
+    if (candidate.length >= 2) return candidate;
+  }
+  return 'Unknown';
+}
+
+// ============================================================
+// 🧹 CLEAN UP IMPORTED ROWS
+//
+// Repairs rows that were imported before the parser was fixed:
+// strips leftover HTML from the Company/Role cells and removes rows
+// whose Role is actually a LinkedIn alert heading (not a real job).
+// ============================================================
+function cleanUpImportedRows() {
+  const ui = SpreadsheetApp.getUi();
+  const C  = CONFIG.COLUMNS;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  const response = ui.alert('Clean up imported rows?',
+    'This scans the Inbox and Job Tracker tabs and will:\n\n' +
+    '• strip leftover HTML from Company and Role cells\n' +
+    '• delete rows whose Role is a LinkedIn alert heading rather than a real job\n\n' +
+    'Rows with real jobs are left alone. Continue?',
+    ui.ButtonSet.YES_NO);
+  if (response !== ui.Button.YES) return;
+
+  let cleaned = 0, removed = 0;
+
+  [CONFIG.SHEETS.INBOX, CONFIG.SHEETS.JOB_TRACKER].forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet || sheet.getLastRow() < CONFIG.START_ROW) return;
+
+    // Inbox and Job Tracker both use column A = Company, column B = Role.
+    for (let r = sheet.getLastRow(); r >= CONFIG.START_ROW; r--) {
+      const companyCell = sheet.getRange(r, C.COMPANY);
+      const roleCell    = sheet.getRange(r, C.ROLE);
+      const company     = (companyCell.getValue() || '').toString();
+      const role        = (roleCell.getValue()    || '').toString();
+      if (!company && !role) continue;
+
+      const fixedCompany = cleanEmailLine(company);
+      const fixedRole    = cleanEmailLine(role);
+
+      // A Role that is really an alert heading means the whole row is junk.
+      if (fixedRole && isAlertNoise(fixedRole)) {
+        sheet.deleteRow(r);
+        removed++;
+        continue;
+      }
+
+      if (fixedCompany !== company || fixedRole !== role) {
+        if (fixedCompany !== company) companyCell.setValue(fixedCompany);
+        if (fixedRole    !== role)    roleCell.setValue(fixedRole);
+        cleaned++;
+      }
+    }
+  });
+
+  writeToLog('Cleanup', 'Cleaned ' + cleaned + ' row(s), removed ' + removed + ' bad row(s).', 'Success');
+  ui.alert('🧹 Cleanup complete',
+    'Cleaned up: ' + cleaned + ' row(s)\n' +
+    'Removed as not-a-real-job: ' + removed + ' row(s)\n\n' +
+    'Re-run 📧 Fetch LinkedIn Jobs to re-import them correctly.',
+    ui.ButtonSet.OK);
 }
 
 // ============================================================
